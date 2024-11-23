@@ -1,11 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { getSearchFlight, getSingleFLight } from "../api/flight"; // Assume this is the API function to fetch flights
+import { getFilterFlight, getSearchFlight } from "../api/flight"; // Assume this is the API function to fetch flights
 import { API_KEY } from "../api/constant";
 
 import { IoMdClose } from "react-icons/io";
 
 import { useDebounce } from "use-debounce";
+
+const sortOptions = [
+  { label: "Best", value: "best" },
+  { label: "Cheapest", value: "price_high" },
+  { label: "Fastest", value: "fastest" },
+  { label: "Outbound Take Off Time", value: "outbound_take_off_time" },
+  { label: "Outbound Landing Time", value: "outbound_landing_time" },
+  { label: "Return Take Off Time", value: "return_take_off_time" },
+  { label: "Return Landing Time", value: "return_landing_time" },
+];
+
+const classTypeArray = [
+  { label: "Economy", value: "economy" },
+  { label: "Premium Economy", value: "premium_economy" },
+  { label: "Business", value: "business" },
+  { label: "First", value: "first" },
+];
+
 
 const FlightSearch = () => {
   const [departure, setDeparture] = useState("");
@@ -18,7 +36,7 @@ const FlightSearch = () => {
   const [returnDate, setReturnDate] = useState("");
   const [tripType, setTripType] = useState("Round Trip");
   const [passengers, setPassengers] = useState(1);
-  const [classType, setClassType] = useState("Economy");
+  const [classType, setClassType] = useState("economy");
 
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,40 +50,12 @@ const FlightSearch = () => {
   const [selectedDestination, setSelectedDestination] = useState();
 
   const [error, setError] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedFlightDetails, setSelectedFlightDetails] = useState(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [cabinClass, setCabinClass] = useState("economy");
+  const [sortBy, setSortBy] = useState("best");
 
   const handleSearch = async () => {
-    // Prepare the payload
-    // const payload = {
-    //   tripType,
-    //   departure,
-    //   destination,
-    //   departureDate,
-    //   returnDate,
-    //   passengers,
-    //   classType,
-    // };
-
-    // const payload = {
-    //   originSkyId: selectedDeparture?.skyId,
-    //   adults: passengers,
-    //   cabinClass: "economy",
-    //   currency: "USD",
-    //   destinationEntityId: selectedDestination?.entityId,
-    //   destinationSkyId: selectedDestination?.skyId,
-    //   market: "en-US",
-    //   originEntityId: selectedDeparture?.entityId,
-    //   // sortBy: "best",
-    //   date: departureDate,
-    //   returnDate: returnDate,
-    //   countryCode: "US",
-    // };
-
     const payload = {
       adults: `${passengers}`,
-      // cabinClass: classType.toLowerCase(),
       countryCode: "IN",
       currency: "INR",
       date: departureDate,
@@ -74,7 +64,8 @@ const FlightSearch = () => {
       market: "en-IN",
       originEntityId: selectedDeparture?.entityId,
       originSkyId: selectedDeparture?.skyId,
-      sortBy: "best",
+      sortBy: sortBy,
+      cabinClass: classType,
     };
 
     console.log("Search Payload:", payload);
@@ -94,36 +85,6 @@ const FlightSearch = () => {
       setLoading(false);
     }
   };
-
-  const handleViewDetails = async (flight) => {
-    const id = flight?.legs[0]?.id;
-    const originID = flight?.legs[0]?.origin?.entityId;
-    const destinationID = flight?.legs[0]?.destination?.entityId;
-    const date = flight?.legs[0]?.departure;
-    setLoadingDetails(true);
-    setModalVisible(true);
-    try {
-      const flightDetails = await getSingleFLight({
-        id,
-        origin: originID,
-        destination: destinationID,
-        date,
-      });
-      setSelectedFlightDetails(flightDetails);
-    } catch (error) {
-      console.error("Error fetching flight details:", error);
-      setSelectedFlightDetails(null);
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedFlightDetails(null);
-  };
-
-  console.log(flights);
 
   const fetchAirports = async (query, setAirports, setLoading) => {
     if (!query) return;
@@ -154,24 +115,37 @@ const FlightSearch = () => {
     }
   };
 
-  const debounce = (func, delay) => {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), delay);
-    };
+  const handleFilterFlights = async () => {
+    setLoading(true);
+    try {
+      const flightDetails = await getFilterFlight({
+        departure: departureSearchTerm,
+        destination: destinationSearchTerm,
+        departureDate,
+        returnDate,
+        tripType,
+        passengers: adults,
+        classType: cabinClass,
+        sortBy,
+      });
+      setFlights(flightDetails);
+    } catch (error) {
+      setError("Error fetching flights");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Debounced handlers for fetching airports
-  // const handleDepartureChange = debounce((value) => {
-  //   setDeparture(value);
-  //   fetchAirports(value, setDepartureAirports, setLoadingDeparture);
-  // }, 300);
+  const handleApplyFilters = () => {
+    // Apply selected filters and refresh flight data
+    handleFilterFlights();
+  };
 
-  // const handleDestinationChange = debounce((value) => {
-  //   setDestination(value);
-  //   fetchAirports(value, setDestinationAirports, setLoadingDestination);
-  // }, 300);
+  useEffect(() => {
+    if (departureSearchTerm && destinationSearchTerm) {
+      handleFilterFlights();
+    }
+  }, [departureSearchTerm, destinationSearchTerm]);
 
   useEffect(() => {
     if (!departureSearchTerm && departureSearchTerm.length < 2) {
@@ -197,14 +171,9 @@ const FlightSearch = () => {
     }
   }, [destinationSearchTerm]);
 
-  //   console.log(departureAirports);
-
   return (
-    <div className="flex flex-col items-center bg-gray-900 text-white py-10">
-      {/* <h1 className="text-3xl font-semibold mb-6">Flights</h1> */}
-
-      {/* Search Form */}
-      <div className="flex flex-col md:flex-row items-center justify-center bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4">
+    <div className="flex flex-col items-center bg-gray-900 text-white  gap-4 p-10">
+      <div className="grid grid-cols-4 gap-3 w-full items-center justify-center bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4">
         {/* Trip Type */}
         <select
           className="bg-gray-700 px-4 py-2 rounded-lg text-sm"
@@ -230,8 +199,11 @@ const FlightSearch = () => {
           value={classType}
           onChange={(e) => setClassType(e.target.value)}
         >
-          <option value="Economy">Economy</option>
-          <option value="Business">Business</option>
+          {classTypeArray?.map((cl, i) => (
+            <option defaultChecked={cl.value === classType} value={cl.value} key={`${cl.value}-${i}`}>{cl.label}</option>
+
+          ))}
+          {/* <option value="Business">Business</option> */}
         </select>
 
         {/* Departure */}
@@ -358,124 +330,108 @@ const FlightSearch = () => {
 
       {/* Error Message */}
       {error && <p className="text-red-500 mt-4">{error}</p>}
-
-      {/* Flights Results */}
-      <div className="mt-6 w-full max-w-4xl mx-auto">
-        {flights?.length > 0 ? (
-          <div className="space-y-6">
-            {flights?.map((flight, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-r from-gray-800 via-gray-900 to-black text-white p-8 rounded-xl shadow-xl transform hover:scale-105 transition-transform duration-300"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">Flight Details</h2>
-                  <span className="bg-blue-600 px-4 py-2 rounded-full text-sm font-medium shadow-md">
-                    {flight?.tags?.join(", ")}
-                  </span>
-                </div>
-                <div className="text-base space-y-4">
-                  <p>
-                    <span className="font-semibold text-gray-300">
-                      Departure:
-                    </span>{" "}
-                    {flight?.legs[0]?.origin?.city}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-300">
-                      Arrival:
-                    </span>{" "}
-                    {flight?.legs[0]?.destination?.city}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-300">
-                      Duration:
-                    </span>{" "}
-                    {flight?.legs[0]?.durationInMinutes} minutes
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-300">Price:</span>{" "}
-                    <span className="text-green-400">
-                      {flight?.price?.formatted}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-300">
-                      Change Policy:
-                    </span>{" "}
-                    {flight?.farePolicy?.isChangeAllowed
-                      ? "Allowed"
-                      : "Not Allowed"}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-300">
-                      Cancellation:
-                    </span>{" "}
-                    {flight?.farePolicy?.isCancellationAllowed
-                      ? "Allowed"
-                      : "Not Allowed"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleViewDetails(flight)}
-                  className="mt-6 w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white px-6 py-3 rounded-lg text-lg font-medium shadow-lg"
-                >
-                  Book Now
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          !loading && (
-            <p className="text-gray-400 text-center mt-10">No flights found</p>
-          )
-        )}
-      </div>
-      {modalVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-gray-800 text-white rounded-lg p-6 w-96 relative">
-            <button
-              onClick={closeModal}
-              className="absolute top-2 right-2 text-gray-400 hover:text-white"
+      <div className="flex gap-3 mt-12 items-start justify-start w-full">
+        <div className="flex flex-col bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4 gap-6">
+          <div className="flex flex-col space-y-2">
+            <label htmlFor="sortBy" className="text-gray-300">
+              Sort By
+            </label>
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-gray-700 text-white rounded-md px-4 py-2"
             >
-              <IoMdClose size={24} />
-            </button>
-            {loadingDetails ? (
-              <p className="text-center">Loading flight details...</p>
-            ) : selectedFlightDetails ? (
-              <div>
-                <h2 className="text-xl font-bold mb-4">Flight Details</h2>
-                <p>
-                  <span className="font-semibold">Airline:</span>{" "}
-                  {selectedFlightDetails.airline}
-                </p>
-                <p>
-                  <span className="font-semibold">Departure:</span>{" "}
-                  {selectedFlightDetails.departureTime}
-                </p>
-                <p>
-                  <span className="font-semibold">Arrival:</span>{" "}
-                  {selectedFlightDetails.arrivalTime}
-                </p>
-                <p>
-                  <span className="font-semibold">Price:</span>{" "}
-                  {selectedFlightDetails.price?.formatted}
-                </p>
-                <p>
-                  <span className="font-semibold">Cancellation:</span>{" "}
-                  {selectedFlightDetails.isCancellationAllowed
-                    ? "Allowed"
-                    : "Not Allowed"}
-                </p>
-              </div>
-            ) : (
-              <p className="text-center text-red-400">
-                Failed to load details.
-              </p>
-            )}
+              {sortOptions?.map((opt, i) => (
+                <option key={`${opt.label}-${i}`} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
+          <button
+            onClick={handleSearch}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md mt-4 md:mt-0"
+          >
+            Apply Filters
+          </button>
         </div>
-      )}
+        <div className="mt-6 w-full max-w-4xl mx-auto">
+          {flights?.length > 0 ? (
+            <div className="space-y-6">
+              {flights?.map((flight, index) => (
+                <div
+                  key={index}
+                  className="bg-gradient-to-r from-gray-800 via-gray-900 to-black text-white p-8 rounded-xl shadow-xl transform hover:scale-105 transition-transform duration-300"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold">Flight Details</h2>
+                    <span className="bg-blue-600 px-4 py-2 rounded-full text-sm font-medium shadow-md">
+                      {flight?.tags?.join(", ")}
+                    </span>
+                  </div>
+                  <div className="text-base space-y-4">
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Departure:
+                      </span>{" "}
+                      {flight?.legs[0]?.origin?.city}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Arrival:
+                      </span>{" "}
+                      {flight?.legs[0]?.destination?.city}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Duration:
+                      </span>{" "}
+                      {flight?.legs[0]?.durationInMinutes} minutes
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Price:
+                      </span>{" "}
+                      <span className="text-green-400">
+                        {flight?.price?.formatted}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Change Policy:
+                      </span>{" "}
+                      {flight?.farePolicy?.isChangeAllowed
+                        ? "Allowed"
+                        : "Not Allowed"}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-300">
+                        Cancellation:
+                      </span>{" "}
+                      {flight?.farePolicy?.isCancellationAllowed
+                        ? "Allowed"
+                        : "Not Allowed"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleViewDetails(flight)}
+                    className="mt-6 w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white px-6 py-3 rounded-lg text-lg font-medium shadow-lg"
+                  >
+                    Book Now
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            !loading && (
+              <p className="text-gray-400 text-center mt-10">
+                No flights found
+              </p>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 };
