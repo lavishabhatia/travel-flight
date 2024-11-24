@@ -172,8 +172,8 @@ const FlightSearch = () => {
   }, [destinationSearchTerm]);
 
   return (
-    <div className="flex flex-col items-center bg-gray-900 text-white  gap-4 p-10">
-      <div className="grid grid-cols-4 gap-3 w-full items-center justify-center bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4">
+    <div className="flex flex-col w-full items-center bg-gray-900 text-white  gap-4 p-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 w-full items-center justify-center bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4">
         {/* Trip Type */}
         <select
           className="bg-gray-700 px-4 py-2 rounded-lg text-sm"
@@ -184,7 +184,6 @@ const FlightSearch = () => {
           <option value="One Way">One Way</option>
         </select>
 
-        {/* Passengers */}
         <input
           type="number"
           className="bg-gray-700 px-4 py-2 rounded-lg text-sm"
@@ -203,10 +202,10 @@ const FlightSearch = () => {
             <option defaultChecked={cl.value === classType} value={cl.value} key={`${cl.value}-${i}`}>{cl.label}</option>
 
           ))}
-          {/* <option value="Business">Business</option> */}
+
         </select>
 
-        {/* Departure */}
+
 
         <div className=" relative">
           {selectedDeparture ? (
@@ -302,7 +301,7 @@ const FlightSearch = () => {
           )}
         </div>
 
-        {/* Departure Date */}
+
         <input
           type="date"
           className="bg-gray-700 px-4 py-2 rounded-lg text-sm"
@@ -330,7 +329,7 @@ const FlightSearch = () => {
 
       {/* Error Message */}
       {error && <p className="text-red-500 mt-4">{error}</p>}
-      <div className="flex gap-3 mt-12 items-start justify-start w-full">
+      <div className="flex flex-col lg:flex-row gap-3 mt-12 items-start justify-start w-full">
         <div className="flex flex-col bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4 gap-6">
           <div className="flex flex-col space-y-2">
             <label htmlFor="sortBy" className="text-gray-300">
