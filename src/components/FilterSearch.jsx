@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { getFilterFlight, getSearchFlight } from "../api/flight"; // Assume this is the API function to fetch flights
+import { getFilterFlight, getSearchFlight } from "../api/flight"; 
 import { API_KEY } from "../api/constant";
 
 import { IoMdClose } from "react-icons/io";
@@ -136,10 +136,7 @@ const FlightSearch = () => {
     }
   };
 
-  const handleApplyFilters = () => {
-    // Apply selected filters and refresh flight data
-    handleFilterFlights();
-  };
+  
 
   useEffect(() => {
     if (departureSearchTerm && destinationSearchTerm) {
@@ -327,7 +324,7 @@ const FlightSearch = () => {
         </button>
       </div>
 
-      {/* Error Message */}
+
       {error && <p className="text-red-500 mt-4">{error}</p>}
       <div className="flex flex-col lg:flex-row gap-3 mt-12 items-start justify-start w-full">
         <div className="flex flex-col bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:space-y-0 md:space-x-4 gap-6">
